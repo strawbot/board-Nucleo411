@@ -1,0 +1,42 @@
+// Nucleo board CLI bindings
+// Run as prebuild step: python parsewords.py <path>/discoverywords.txt
+// Generates: help.c  wordlist.c  wordlist.txt
+// Include clibindings.txt and floatwords.txt for full CLI support.
+
+Words // system
+	show-sys		show_sys		// show system info: clock frequencies and uptime
+	show-time		show_timer		// show delta timer state and UTC tick counter
+	show-timers		show_timers		// dump TIM1-TIM14 and RTC: clock gate, CEN, direction, PSC, ARR, CNT, active CC channels
+	reboot			do_reboot		// reboot the device via NVIC system reset
+	show-cli		show_cli		// display cli status
+	pins			gpio_dump_all	// show all pins and states
+End
+
+Include ../../TimbreOS/WordLists/clibindings.txt
+Include ../../TimbreOS/WordLists/floatwords.txt
+
+Words // system	
+	tabto cli_tabTo // (n) move ahead to line position n
+	key get_key // ( - c ) return character c from key queue or 0
+	key? ask_key // ( - f ) return true if there is a key in the keyq
+	te print_te // print counter, compare value and list of time event actions with due dates
+	telist te_lists // print TE todo and done list of time events
+	pa print_actions // print actions in queue
+	tn dumpTeaNames // dump out names in action name array
+	mstats machineStats // list stats for machines
+	0stats zeroMachineTimes // initialize stats to zero
+	teakeycosts show_key_costs // show key hashes and clustering of teatimes table
+    latency show_latency // show latency stats for time events and actions
+	0latency reset_latency // zero the latency stats; sampled every 10s
+	testtime test_time // ( s ) test ticks, timeouts and time for s seconds
+	tickms ticks_ms // ( tick - ms ) convert tick to milliseconds
+	gtt get_tick_time // print tick and time
+	start cliStartTime // create a reference point
+	end cliEndTime // print time from start
+	play play_events // play out events in event queue and restart recording
+	stop record_event_off // stop recording events
+	record record_events_on // start recording events
+	echoon autoEchoOn // turn on key echo
+	echooff autoEchoOff // turn off key echo
+	nap nap_for // (n) take a nap for n milliseconds
+End
