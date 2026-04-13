@@ -101,7 +101,10 @@ void help(void) {
     printif("c!   ( c a - ) store next into memory using top as address (8 bit)\n");
     printif("c,   ( c - ) allocate and 1 byte and put value in it\n");
     printif("c@   ( a - c ) return contents of memory using top stack item as the address (8 bit)\n");
+    printif("cal-wire   run two-point self-calibration: R_max at 0% then R_min at 70%\n");
     printif("cbrt   ( f - f  ) calculate the cube root of f\n");
+    printif("char-wire    ( n ) run 3-phase step-response test: pre-cool, heat at n%, cool to rest\n");
+    printif("cl-off    disable closed-loop controller; PWM holds at last value\n");
     printif("cmove   ( s d n - ) move n bytes from s to d\n");
     printif("constant   ( n - ) <string> give n a name\n");
     printif("cos   ( f -  f  ) calculate the cosine of f\n");
@@ -110,6 +113,8 @@ void help(void) {
     printif("decimals\n");
     printif("drop   ( n - ) throw away the top data stack item\n");
     printif("dump   ( a n - ) dump n 16-byte rows of memory starting at address a\n");
+    printif("dump-char    emit char-wire step-response data as CSV (paste into spreadsheet)\n");
+    printif("dump-profile   emit captured profile as CSV to CLI output\n");
     printif("dup   ( n - n n ) make a copy of the top data stack item\n");
     printif("echooff   turn off key echo\n");
     printif("echoon   turn on key echo\n");
@@ -169,8 +174,14 @@ void help(void) {
     printif("resetcli   reset cli including removing all macros\n");
     printif("s!   ( h a - ) store next into memory using top as address (16 bit)\n");
     printif("s@   ( a - h ) return contents of memory using top stack item as the address (16 bit)\n");
+    printif("set-per    ( n ) set closed-loop contraction target to n percent (0-100) and enable controller\n");
+    printif("setpwm   ( n ) set muscle wire PWM duty to n percent (0-70)\n");
     printif("shift   ( n m - p ) shift n by m bit left for minus and right for positive\n");
+    printif("show-ADC   show all adc inputs\n");
+    printif("show-cal   show calibration state, R_max, R_min and measured travel span\n");
+    printif("show-cl    show closed-loop controller state: target, measured, error, rate, PWM\n");
     printif("show-cli   display cli status\n");
+    printif("show-pwm   show PWM duty, supply/node voltages, wire resistance and contraction\n");
     printif("show-sys   show system info: clock frequencies and uptime\n");
     printif("show-time   show delta timer state and UTC tick counter\n");
     printif("show-timers   dump TIM1-TIM14 and RTC: clock gate, CEN, direction, PSC, ARR, CNT, active CC channels\n");
@@ -179,6 +190,7 @@ void help(void) {
     printif("sp!   ( ... - ) empty the data stack\n");
     printif("sqrt   ( f - f  ) calculate the square root of f\n");
     printif("start   create a reference point\n");
+    printif("start-profile   ( n ) apply n% PWM and begin 25.6 s resistance profile capture\n");
     printif("stop   stop recording events\n");
     printif("strlen   ( a - c ) return length of a string\n");
     printif("swap   ( n m - m n ) swap top two items on the data stack\n");

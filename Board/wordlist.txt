@@ -49,7 +49,10 @@ bin   switch to binary numbers
 c!   ( c a - ) store next into memory using top as address (8 bit)
 c,   ( c - ) allocate and 1 byte and put value in it
 c@   ( a - c ) return contents of memory using top stack item as the address (8 bit)
+cal-wire   run two-point self-calibration: R_max at 0% then R_min at 70%
 cbrt   ( f - f  ) calculate the cube root of f
+char-wire    ( n ) run 3-phase step-response test: pre-cool, heat at n%, cool to rest
+cl-off    disable closed-loop controller; PWM holds at last value
 cmove   ( s d n - ) move n bytes from s to d
 constant   ( n - ) <string> give n a name
 cos   ( f -  f  ) calculate the cosine of f
@@ -58,6 +61,8 @@ decimal   interpret all subsequent numbers as decimal
 decimals  
 drop   ( n - ) throw away the top data stack item
 dump   ( a n - ) dump n 16-byte rows of memory starting at address a
+dump-char    emit char-wire step-response data as CSV (paste into spreadsheet)
+dump-profile   emit captured profile as CSV to CLI output
 dup   ( n - n n ) make a copy of the top data stack item
 echooff   turn off key echo
 echoon   turn on key echo
@@ -117,8 +122,14 @@ repeat  [i]  go back to the begin part
 resetcli   reset cli including removing all macros
 s!   ( h a - ) store next into memory using top as address (16 bit)
 s@   ( a - h ) return contents of memory using top stack item as the address (16 bit)
+set-per    ( n ) set closed-loop contraction target to n percent (0-100) and enable controller
+setpwm   ( n ) set muscle wire PWM duty to n percent (0-70)
 shift   ( n m - p ) shift n by m bit left for minus and right for positive
+show-ADC   show all adc inputs
+show-cal   show calibration state, R_max, R_min and measured travel span
+show-cl    show closed-loop controller state: target, measured, error, rate, PWM
 show-cli   display cli status
+show-pwm   show PWM duty, supply/node voltages, wire resistance and contraction
 show-sys   show system info: clock frequencies and uptime
 show-time   show delta timer state and UTC tick counter
 show-timers   dump TIM1-TIM14 and RTC: clock gate, CEN, direction, PSC, ARR, CNT, active CC channels
@@ -127,6 +138,7 @@ sin   ( f -  f  ) calculate the sine of f
 sp!   ( ... - ) empty the data stack
 sqrt   ( f - f  ) calculate the square root of f
 start   create a reference point
+start-profile   ( n ) apply n% PWM and begin 25.6 s resistance profile capture
 stop   stop recording events
 strlen   ( a - c ) return length of a string
 swap   ( n m - m n ) swap top two items on the data stack

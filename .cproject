@@ -84,6 +84,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Board"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Limbs"/>
 						<entry excluding="valueTransfer.c|timestamp.c|printersHost.c|hash_32.c|TimbreUnitTests" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TimbreOS"/>
 					</sourceEntries>
 				</configuration>
@@ -169,6 +170,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Board"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Limbs"/>
 						<entry excluding="valueTransfer.c|timestamp.c|printersHost.c|hash_32.c|TimbreUnitTests" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TimbreOS"/>
 					</sourceEntries>
 				</configuration>

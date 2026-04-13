@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Review Map</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
+      border-bottom: 1px solid #2d3748;
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header svg { flex-shrink: 0; }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f7fafc;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #718096;
+      margin-top: 2px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 20px 40px 0;
+      border-bottom: 1px solid #2d3748;
+      background: #0f1117;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      border-radius: 8px 8px 0 0;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: #718096;
+      border: 1px solid transparent;
+      border-bottom: none;
+      transition: all 0.15s;
+      background: transparent;
+    }
+
+    .tab:hover { color: #cbd5e0; background: #1a1f2e; }
+
+    .tab.active {
+      color: #63b3ed;
+      background: #1a1f2e;
+      border-color: #2d3748;
+      border-bottom-color: #1a1f2e;
+      margin-bottom: -1px;
+    }
+
+    .panel { display: none; padding: 32px 40px; }
+    .panel.active { display: block; }
+
+    /* ────────── FLOW TAB ────────── */
+    .flow-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .phase-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .phase-label {
+      width: 140px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #4a5568;
+    }
+
+    .phase-nodes {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 8px 0;
+    }
+
+    .flow-node {
+      flex: 1;
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      padding: 14px 16px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .flow-node:hover {
+      border-color: #4a90d9;
+      background: #1e2a3a;
+      transform: translateY(-1px);
+    }
+
+    .flow-node.active-node {
+      border-color: #63b3ed;
+      background: #1a2a3d;
+      box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.15);
+    }
+
+    .flow-node .node-icon {
+      font-size: 1.3rem;
+      margin-bottom: 6px;
+    }
+
+    .flow-node .node-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+
+    .flow-node .node-sub {
+      font-size: 0.72rem;
+      color: #718096;
+      line-height: 1.4;
+    }
+
+    .node-badge {
+      position: absolute;
+      top: -8px;
+      right: 10px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .badge-author { background: #2c5282; color: #90cdf4; }
+    .badge-reviewer { background: #285e2e; color: #9ae6b4; }
+    .badge-system { background: #44337a; color: #d6bcfa; }
+    .badge-gate { background: #744210; color: #fbd38d; }
+
+    .arrow {
+      width: 32px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4a5568;
+      font-size: 1.1rem;
+    }
+
+    .arrow-down {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-left: 140px;
+      height: 28px;
+      color: #4a5568;
+      font-size: 1.1rem;
+    }
+
+    .detail-box {
+      max-width: 900px;
+      margin: 20px auto 0;
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+
+    .detail-box h3 { font-size: 1rem; font-weight: 600; color: #90cdf4; margin-bottom: 12px; }
+
+    .detail-cols {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .detail-item {
+      background: #0f1117;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+    }
+
+    .detail-item .di-label { color: #718096; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .detail-item .di-val { color: #e2e8f0; }
+
+    .branch-row {
+      display: flex;
+      align-items: stretch;
+      gap: 16px;
+      padding-left: 140px;
+      margin: 8px 0;
+    }
+
+    .branch-yes, .branch-no {
+      flex: 1;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      border: 1px solid;
+    }
+
+    .branch-yes { background: #1a2e1a; border-color: #2f6b31; color: #9ae6b4; }
+    .branch-no { background: #2a1a1a; border-color: #6b2f2f; color: #feb2b2; }
+
+    .branch-yes .by-label { font-weight: 700; margin-bottom: 3px; }
+    .branch-no .bn-label { font-weight: 700; margin-bottom: 3px; }
+
+    /* ────────── CHECKLIST TAB ────────── */
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .check-card {
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .check-card-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .check-card-header .icon { font-size: 1.2rem; }
+
+    .check-list { padding: 12px 18px; }
+
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 7px 0;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 7px 6px;
+      transition: background 0.1s;
+    }
+
+    .check-item:hover { background: #0f1117; }
+
+    .check-item input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      accent-color: #63b3ed;
+      cursor: pointer;
+    }
+
+    .check-item label {
+      font-size: 0.82rem;
+      color: #cbd5e0;
+      cursor: pointer;
+      line-height: 1.5;
+    }
+
+    .check-item.checked label {
+      text-decoration: line-through;
+      color: #4a5568;
+    }
+
+    .progress-bar-wrap {
+      background: #0f1117;
+      border-top: 1px solid #2d3748;
+      padding: 10px 18px;
+      font-size: 0.75rem;
+      color: #718096;
+    }
+
+    .progress-bar-track {
+      height: 4px;
+      background: #2d3748;
+      border-radius: 99px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #3182ce, #63b3ed);
+      transition: width 0.3s;
+    }
+
+    .checklist-summary {
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .summary-stat { text-align: center; }
+    .summary-stat .s-num { font-size: 1.6rem; font-weight: 700; color: #63b3ed; }
+    .summary-stat .s-label { font-size: 0.72rem; color: #718096; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .summary-divider { width: 1px; height: 40px; background: #2d3748; }
+
+    .clear-btn {
+      margin-left: auto;
+      background: #2d3748;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #a0aec0;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .clear-btn:hover { background: #4a5568; color: #e2e8f0; }
+
+    /* ────────── OWNERSHIP TAB ────────── */
+    .ownership-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .owner-card {
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .owner-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .owner-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .owner-name { font-weight: 600; font-size: 0.9rem; color: #e2e8f0; }
+    .owner-role { font-size: 0.73rem; color: #718096; margin-top: 1px; }
+
+    .owner-areas { display: flex; flex-direction: column; gap: 6px; }
+
+    .area-tag {
+      background: #0f1117;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      color: #a0aec0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .area-tag .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* colour classes */
+    .c-blue { background: #2b4c7e; color: #90cdf4; }
+    .c-green { background: #285e2e; color: #9ae6b4; }
+    .c-purple { background: #44337a; color: #d6bcfa; }
+    .c-orange { background: #744210; color: #fbd38d; }
+    .c-red { background: #63171b; color: #fc8181; }
+    .c-teal { background: #1d4044; color: #81e6d9; }
+    .c-pink { background: #521b41; color: #fbb6ce; }
+
+    .dot-blue { background: #63b3ed; }
+    .dot-green { background: #68d391; }
+    .dot-purple { background: #b794f4; }
+    .dot-orange { background: #f6ad55; }
+    .dot-red { background: #fc8181; }
+    .dot-teal { background: #4fd1c5; }
+    .dot-pink { background: #f687b3; }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding: 14px 18px;
+      background: #1a1f2e;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.78rem;
+      color: #a0aec0;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ────────── SEVERITY TAB ────────── */
+    .severity-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+
+    .severity-table th {
+      background: #1a1f2e;
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #718096;
+      font-weight: 600;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .severity-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1a1f2e;
+      vertical-align: top;
+      color: #cbd5e0;
+      background: #0f1117;
+    }
+
+    .severity-table tr:hover td { background: #141824; }
+
+    .sev-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .sev-blocker { background: #63171b; color: #fc8181; }
+    .sev-critical { background: #652b19; color: #fbd38d; }
+    .sev-major    { background: #2c5282; color: #90cdf4; }
+    .sev-minor    { background: #1a2e1a; color: #9ae6b4; }
+    .sev-nit      { background: #2d3748; color: #a0aec0; }
+
+    .action-chip {
+      display: inline-block;
+      background: #2d3748;
+      color: #a0aec0;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      margin: 2px 2px 0 0;
+    }
+
+    /* ────────── RESPONSIVE ────────── */
+    @media (max-width: 680px) {
+      header { padding: 16px 20px; }
+      .tabs { padding: 16px 20px 0; }
+      .panel { padding: 20px; }
+      .phase-label { display: none; }
+      .arrow-down { padding-left: 0; }
+      .branch-row { padding-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+    <rect width="36" height="36" rx="8" fill="#2b4c7e"/>
+    <path d="M10 12h16M10 18h10M10 24h13" stroke="#90cdf4" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="27" cy="24" r="5" fill="#63b3ed" stroke="#1a1f2e" stroke-width="1.5"/>
+    <path d="M25 24l1.3 1.5L29 22.5" stroke="#1a1f2e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div>
+    <h1>Code Review Map</h1>
+    <p>Process flow · checklist · ownership · severity guide</p>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('flow', this)">🗺 Process Flow</button>
+  <button class="tab" onclick="switchTab('checklist', this)">✅ Review Checklist</button>
+  <button class="tab" onclick="switchTab('ownership', this)">👥 Ownership</button>
+  <button class="tab" onclick="switchTab('severity', this)">🔴 Severity Guide</button>
+</div>
+
+<!-- ══════════════ FLOW PANEL ══════════════ -->
+<div id="tab-flow" class="panel active">
+  <div class="flow-grid">
+
+    <!-- Author: prep -->
+    <div class="phase-row">
+      <div class="phase-label">Author</div>
+      <div class="phase-nodes">
+        <div class="flow-node" onclick="showDetail('d-branch')">
+          <span class="node-badge badge-author">Author</span>
+          <div class="node-icon">🌿</div>
+          <div class="node-title">Create Feature Branch</div>
+          <div class="node-sub">Branch from main/develop · follow naming convention</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="flow-node" onclick="showDetail('d-commit')">
+          <div class="node-icon">💾</div>
+          <div class="node-title">Commit Changes</div>
+          <div class="node-sub">Atomic commits · clear messages · sign-off if required</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="flow-node" onclick="showDetail('d-self')">
+          <div class="node-icon">🔍</div>
+          <div class="node-title">Self Review</div>
+          <div class="node-sub">Read your own diff · run tests locally · lint clean</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- CI -->
+    <div class="phase-row">
+      <div class="phase-label">CI / Automation</div>
+      <div class="phase-nodes">
+        <div class="flow-node" onclick="showDetail('d-pr')">
+          <span class="node-badge badge-author">Author</span>
+          <div class="node-icon">📬</div>
+          <div class="node-title">Open Pull Request</div>
+          <div class="node-sub">Fill template · link issue · add reviewers & labels</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="flow-node" onclick="showDetail('d-ci')">
+          <span class="node-badge badge-system">CI</span>
+          <div class="node-icon">⚙️</div>
+          <div class="node-title">Automated Checks</div>
+          <div class="node-sub">Build · unit tests · lint · coverage · security scan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CI gate -->
+    <div class="arrow-down">↓</div>
+    <div class="branch-row">
+      <div class="branch-yes">
+        <div class="by-label">✅ CI Passes</div>
+        <div>Continue to human review</div>
+      </div>
+      <div class="branch-no">
+        <div class="bn-label">❌ CI Fails</div>
+        <div>Author fixes issues → re-push → CI re-runs</div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Reviewer -->
+    <div class="phase-row">
+      <div class="phase-label">Reviewer</div>
+      <div class="phase-nodes">
+        <div class="flow-node" onclick="showDetail('d-review')">
+          <span class="node-badge badge-reviewer">Reviewer</span>
+          <div class="node-icon">👀</div>
+          <div class="node-title">Human Review</div>
+          <div class="node-sub">Logic · security · style · tests · architecture</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="flow-node" onclick="showDetail('d-feedback')">
+          <span class="node-badge badge-reviewer">Reviewer</span>
+          <div class="node-icon">💬</div>
+          <div class="node-title">Leave Feedback</div>
+          <div class="node-sub">Inline comments · severity labels · suggest changes</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+    <div class="branch-row">
+      <div class="branch-yes">
+        <div class="by-label">✅ Approved</div>
+        <div>No blockers — move to merge gate</div>
+      </div>
+      <div class="branch-no">
+        <div class="bn-label">🔄 Changes Requested</div>
+        <div>Author addresses each comment → re-requests review</div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Gate + Merge -->
+    <div class="phase-row">
+      <div class="phase-label">Gate</div>
+      <div class="phase-nodes">
+        <div class="flow-node" onclick="showDetail('d-gate')">
+          <span class="node-badge badge-gate">Gate</span>
+          <div class="node-icon">🔐</div>
+          <div class="node-title">Merge Requirements</div>
+          <div class="node-sub">Min approvals met · no unresolved comments · branch up-to-date</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="flow-node" onclick="showDetail('d-merge')">
+          <span class="node-badge badge-system">Merge</span>
+          <div class="node-icon">🚀</div>
+          <div class="node-title">Merge to Main</div>
+          <div class="node-sub">Squash or merge commit · delete branch · close issue</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="flow-node" onclick="showDetail('d-deploy')">
+          <span class="node-badge badge-system">CD</span>
+          <div class="node-icon">📦</div>
+          <div class="node-title">Deploy & Monitor</div>
+          <div class="node-sub">CD pipeline · smoke tests · rollback if needed</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- detail boxes -->
+  <div id="d-branch" class="detail-box" style="display:none">
+    <h3>🌿 Create Feature Branch</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Naming</div><div class="di-val">feat/&lt;ticket&gt;-short-desc</div></div>
+      <div class="detail-item"><div class="di-label">Base</div><div class="di-val">Always branch from latest main or develop</div></div>
+      <div class="detail-item"><div class="di-label">Lifetime</div><div class="di-val">Short-lived — merge within days, not weeks</div></div>
+      <div class="detail-item"><div class="di-label">Tip</div><div class="di-val">Rebase frequently to avoid large conflicts</div></div>
+    </div>
+  </div>
+
+  <div id="d-commit" class="detail-box" style="display:none">
+    <h3>💾 Commit Best Practices</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Size</div><div class="di-val">One logical change per commit</div></div>
+      <div class="detail-item"><div class="di-label">Message</div><div class="di-val">Conventional: feat(scope): description</div></div>
+      <div class="detail-item"><div class="di-label">Body</div><div class="di-val">Explain "why", not just "what"</div></div>
+      <div class="detail-item"><div class="di-label">Avoid</div><div class="di-val">Committing secrets, large binaries, or debug code</div></div>
+    </div>
+  </div>
+
+  <div id="d-self" class="detail-box" style="display:none">
+    <h3>🔍 Self Review Checklist</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Diff</div><div class="di-val">Read your own diff as if you were the reviewer</div></div>
+      <div class="detail-item"><div class="di-label">Tests</div><div class="di-val">Run the full test suite locally before pushing</div></div>
+      <div class="detail-item"><div class="di-label">Lint</div><div class="di-val">Zero warnings before opening a PR</div></div>
+      <div class="detail-item"><div class="di-label">Scope</div><div class="di-val">Remove unrelated changes or open a separate PR</div></div>
+    </div>
+  </div>
+
+  <div id="d-pr" class="detail-box" style="display:none">
+    <h3>📬 Opening a Pull Request</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Template</div><div class="di-val">Fill out PR template completely</div></div>
+      <div class="detail-item"><div class="di-label">Description</div><div class="di-val">What changed, why, how to test</div></div>
+      <div class="detail-item"><div class="di-label">Labels</div><div class="di-val">bug / feat / chore / breaking-change</div></div>
+      <div class="detail-item"><div class="di-label">Size</div><div class="di-val">Aim for &lt;400 line changes per PR</div></div>
+    </div>
+  </div>
+
+  <div id="d-ci" class="detail-box" style="display:none">
+    <h3>⚙️ Automated Checks</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Build</div><div class="di-val">Compile / bundle must succeed</div></div>
+      <div class="detail-item"><div class="di-label">Tests</div><div class="di-val">Unit + integration, coverage threshold</div></div>
+      <div class="detail-item"><div class="di-label">Lint</div><div class="di-val">ESLint / Ruff / Checkstyle — zero errors</div></div>
+      <div class="detail-item"><div class="di-label">Security</div><div class="di-val">Dependency audit, SAST scan (Snyk / CodeQL)</div></div>
+    </div>
+  </div>
+
+  <div id="d-review" class="detail-box" style="display:none">
+    <h3>👀 Human Review Focus Areas</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Correctness</div><div class="di-val">Does the code do what it claims?</div></div>
+      <div class="detail-item"><div class="di-label">Security</div><div class="di-val">Input validation, auth, data exposure risks</div></div>
+      <div class="detail-item"><div class="di-label">Performance</div><div class="di-val">N+1 queries, unnecessary allocations, blocking calls</div></div>
+      <div class="detail-item"><div class="di-label">Architecture</div><div class="di-val">Consistency with existing patterns</div></div>
+    </div>
+  </div>
+
+  <div id="d-feedback" class="detail-box" style="display:none">
+    <h3>💬 Leaving Feedback</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Tone</div><div class="di-val">Critique code, not the author — be kind</div></div>
+      <div class="detail-item"><div class="di-label">Severity</div><div class="di-val">Label: Blocker / Critical / Major / Minor / Nit</div></div>
+      <div class="detail-item"><div class="di-label">Suggestions</div><div class="di-val">Offer alternatives, not just problems</div></div>
+      <div class="detail-item"><div class="di-label">Praise</div><div class="di-val">Also call out what's done well!</div></div>
+    </div>
+  </div>
+
+  <div id="d-gate" class="detail-box" style="display:none">
+    <h3>🔐 Merge Gate Requirements</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Approvals</div><div class="di-val">Minimum 1–2 reviewers approved</div></div>
+      <div class="detail-item"><div class="di-label">Comments</div><div class="di-val">All blocking comments resolved</div></div>
+      <div class="detail-item"><div class="di-label">CI</div><div class="di-val">All required checks green</div></div>
+      <div class="detail-item"><div class="di-label">Branch</div><div class="di-val">Up-to-date with target (no merge conflicts)</div></div>
+    </div>
+  </div>
+
+  <div id="d-merge" class="detail-box" style="display:none">
+    <h3>🚀 Merging</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">Strategy</div><div class="di-val">Squash merge or merge commit per team policy</div></div>
+      <div class="detail-item"><div class="di-label">Clean up</div><div class="di-val">Delete the feature branch after merge</div></div>
+      <div class="detail-item"><div class="di-label">Issue</div><div class="di-val">Close linked issue via commit message keyword</div></div>
+      <div class="detail-item"><div class="di-label">Changelog</div><div class="di-val">Update CHANGELOG.md if required by team</div></div>
+    </div>
+  </div>
+
+  <div id="d-deploy" class="detail-box" style="display:none">
+    <h3>📦 Deploy & Monitor</h3>
+    <div class="detail-cols">
+      <div class="detail-item"><div class="di-label">CD</div><div class="di-val">Automated deployment pipeline triggers</div></div>
+      <div class="detail-item"><div class="di-label">Smoke tests</div><div class="di-val">Basic end-to-end checks post-deploy</div></div>
+      <div class="detail-item"><div class="di-label">Monitoring</div><div class="di-val">Watch error rates / latency for 30 min</div></div>
+      <div class="detail-item"><div class="di-label">Rollback</div><div class="di-val">Have a plan ready before deploying</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════ CHECKLIST PANEL ══════════════ -->
+<div id="tab-checklist" class="panel">
+
+  <div class="checklist-summary">
+    <div class="summary-stat">
+      <div class="s-num" id="checked-count">0</div>
+      <div class="s-label">Checked</div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <div class="s-num" id="total-count">0</div>
+      <div class="s-label">Total</div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <div class="s-num" id="pct-count">0%</div>
+      <div class="s-label">Complete</div>
+    </div>
+    <button class="clear-btn" onclick="clearAll()">Reset all</button>
+  </div>
+
+  <div class="checklist-grid" id="checklist-grid">
+    <!-- cards injected by JS -->
+  </div>
+</div>
+
+<!-- ══════════════ OWNERSHIP PANEL ══════════════ -->
+<div id="tab-ownership" class="panel">
+  <div class="legend">
+    <span style="font-size:0.78rem;color:#718096;margin-right:4px">Area type:</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#63b3ed"></span>Frontend</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#68d391"></span>Backend</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#b794f4"></span>Infrastructure</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#f6ad55"></span>Data / DB</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#fc8181"></span>Security</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#4fd1c5"></span>Platform</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#f687b3"></span>Design Systems</span>
+  </div>
+  <div class="ownership-grid">
+
+    <div class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-avatar c-blue">AJ</div>
+        <div>
+          <div class="owner-name">Alice Johnson</div>
+          <div class="owner-role">Frontend Lead</div>
+        </div>
+      </div>
+      <div class="owner-areas">
+        <div class="area-tag"><span class="dot dot-blue"></span>UI Components / Design System</div>
+        <div class="area-tag"><span class="dot dot-blue"></span>React / Next.js pages</div>
+        <div class="area-tag"><span class="dot dot-pink"></span>Storybook & accessibility</div>
+      </div>
+    </div>
+
+    <div class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-avatar c-green">MR</div>
+        <div>
+          <div class="owner-name">Marcus Rivera</div>
+          <div class="owner-role">Backend Lead</div>
+        </div>
+      </div>
+      <div class="owner-areas">
+        <div class="area-tag"><span class="dot dot-green"></span>API layer (REST / GraphQL)</div>
+        <div class="area-tag"><span class="dot dot-green"></span>Auth & session management</div>
+        <div class="area-tag"><span class="dot dot-orange"></span>Database migrations</div>
+      </div>
+    </div>
+
+    <div class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-avatar c-purple">SP</div>
+        <div>
+          <div class="owner-name">Sophia Park</div>
+          <div class="owner-role">Platform Engineer</div>
+        </div>
+      </div>
+      <div class="owner-areas">
+        <div class="area-tag"><span class="dot dot-purple"></span>Terraform / IaC</div>
+        <div class="area-tag"><span class="dot dot-teal"></span>CI/CD pipelines</div>
+        <div class="area-tag"><span class="dot dot-teal"></span>Kubernetes / Docker configs</div>
+      </div>
+    </div>
+
+    <div class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-avatar c-orange">DK</div>
+        <div>
+          <div class="owner-name">David Kim</div>
+          <div class="owner-role">Data Engineer</div>
+        </div>
+      </div>
+      <div class="owner-areas">
+        <div class="area-tag"><span class="dot dot-orange"></span>Data pipelines / ETL</div>
+        <div class="area-tag"><span class="dot dot-orange"></span>Analytics schemas</div>
+        <div class="area-tag"><span class="dot dot-green"></span>Data access layer</div>
+      </div>
+    </div>
+
+    <div class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-avatar c-red">LN</div>
+        <div>
+          <div class="owner-name">Lena Nguyen</div>
+          <div class="owner-role">Security Engineer</div>
+        </div>
+      </div>
+      <div class="owner-areas">
+        <div class="area-tag"><span class="dot dot-red"></span>Security-sensitive PRs</div>
+        <div class="area-tag"><span class="dot dot-red"></span>Auth flows / OAuth</div>
+        <div class="area-tag"><span class="dot dot-red"></span>Cryptography & secrets</div>
+      </div>
+    </div>
+
+    <div class="owner-card">
+      <div class="owner-card-header">
+        <div class="owner-avatar c-teal">JW</div>
+        <div>
+          <div class="owner-name">Jordan Wells</div>
+          <div class="owner-role">Full-stack / Any</div>
+        </div>
+      </div>
+      <div class="owner-areas">
+        <div class="area-tag"><span class="dot dot-blue"></span>Cross-cutting features</div>
+        <div class="area-tag"><span class="dot dot-green"></span>Shared utilities / libs</div>
+        <div class="area-tag"><span class="dot dot-teal"></span>Monitoring & observability</div>
+      </div>
+    </div>
+
+  </div>
+
+  <p style="margin-top:20px;font-size:0.78rem;color:#4a5568;">
+    💡 Edit this panel to reflect your team. Security-sensitive changes (auth, crypto, payments) should always include Lena as a required reviewer.
+  </p>
+</div>
+
+<!-- ══════════════ SEVERITY PANEL ══════════════ -->
+<div id="tab-severity" class="panel">
+  <table class="severity-table">
+    <thead>
+      <tr>
+        <th>Level</th>
+        <th>Definition</th>
+        <th>Examples</th>
+        <th>Required action</th>
+        <th>Merge allowed?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="sev-badge sev-blocker">🛑 Blocker</span></td>
+        <td>Correctness or security bug that will cause failures or vulnerabilities in production</td>
+        <td>
+          <span class="action-chip">SQL injection</span>
+          <span class="action-chip">data loss bug</span>
+          <span class="action-chip">broken auth</span>
+          <span class="action-chip">race condition</span>
+        </td>
+        <td>Must be fixed before merge. Reviewer re-reviews the fix.</td>
+        <td style="color:#fc8181;font-weight:600;">No</td>
+      </tr>
+      <tr>
+        <td><span class="sev-badge sev-critical">🔴 Critical</span></td>
+        <td>Serious issue that significantly degrades quality, performance, or reliability</td>
+        <td>
+          <span class="action-chip">N+1 query</span>
+          <span class="action-chip">missing error handling</span>
+          <span class="action-chip">memory leak</span>
+        </td>
+        <td>Must be fixed before merge or tracked in a follow-up issue with a deadline.</td>
+        <td style="color:#fbd38d;font-weight:600;">No*</td>
+      </tr>
+      <tr>
+        <td><span class="sev-badge sev-major">🔵 Major</span></td>
+        <td>Meaningful problem worth fixing now, but won't cause immediate production issues</td>
+        <td>
+          <span class="action-chip">missing tests</span>
+          <span class="action-chip">unclear naming</span>
+          <span class="action-chip">poor abstraction</span>
+        </td>
+        <td>Author should address. If not fixed, must leave a comment explaining why.</td>
+        <td style="color:#90cdf4;font-weight:600;">With comment</td>
+      </tr>
+      <tr>
+        <td><span class="sev-badge sev-minor">🟢 Minor</span></td>
+        <td>Small improvement that would make the code better but isn't required</td>
+        <td>
+          <span class="action-chip">variable name</span>
+          <span class="action-chip">comment wording</span>
+          <span class="action-chip">minor refactor</span>
+        </td>
+        <td>Author's discretion. Can address in a follow-up PR.</td>
+        <td style="color:#9ae6b4;font-weight:600;">Yes</td>
+      </tr>
+      <tr>
+        <td><span class="sev-badge sev-nit">⬜ Nit</span></td>
+        <td>Tiny style preference or cosmetic suggestion — optional to address</td>
+        <td>
+          <span class="action-chip">whitespace</span>
+          <span class="action-chip">trailing comma</span>
+          <span class="action-chip">word choice</span>
+        </td>
+        <td>Prefix comment with "nit:" — author can ignore with no explanation needed.</td>
+        <td style="color:#a0aec0;font-weight:600;">Yes</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:24px;background:#1a1f2e;border:1px solid #2d3748;border-radius:12px;padding:18px 22px;">
+    <h3 style="font-size:0.9rem;font-weight:600;color:#90cdf4;margin-bottom:12px;">💡 Comment Labelling Convention</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;font-size:0.81rem;color:#a0aec0;">
+      <div><code style="color:#fc8181">blocker:</code> This must be fixed.</div>
+      <div><code style="color:#fbd38d">critical:</code> Very important issue.</div>
+      <div><code style="color:#90cdf4">major:</code> Should be addressed.</div>
+      <div><code style="color:#9ae6b4">minor:</code> Nice to fix but optional.</div>
+      <div><code style="color:#a0aec0">nit:</code> Tiny preference, ignore freely.</div>
+      <div><code style="color:#d6bcfa">question:</code> I don't understand this — clarify?</div>
+      <div><code style="color:#fbb6ce">suggestion:</code> Consider this alternative.</div>
+      <div><code style="color:#68d391">praise:</code> This is great, well done! 🎉</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* Tab switching */
+  function switchTab(id, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* Flow node detail reveal */
+  function showDetail(id) {
+    const boxes = document.querySelectorAll('.detail-box');
+    const target = document.getElementById(id);
+    const isVisible = target.style.display !== 'none';
+    boxes.forEach(b => b.style.display = 'none');
+    if (!isVisible) target.style.display = 'block';
+  }
+
+  /* ── Checklist data ── */
+  const categories = [
+    {
+      title: 'Functionality', icon: '⚙️', color: '#3182ce',
+      items: [
+        'Code does exactly what the PR description claims',
+        'Edge cases are handled (nulls, empty inputs, boundaries)',
+        'Error paths are handled gracefully with useful messages',
+        'No obvious logic bugs or off-by-one errors',
+        'Feature works correctly in all supported environments',
+      ]
+    },
+    {
+      title: 'Security', icon: '🔐', color: '#e53e3e',
+      items: [
+        'No hardcoded secrets, tokens, or credentials',
+        'User input is validated and sanitized before use',
+        'SQL queries use parameterized statements (no injection risk)',
+        'Authentication and authorization checks are in place',
+        'No sensitive data logged or exposed in error messages',
+        'Dependencies are up-to-date with no known CVEs',
+      ]
+    },
+    {
+      title: 'Tests', icon: '🧪', color: '#38a169',
+      items: [
+        'New features have corresponding unit tests',
+        'Edge cases and failure paths are tested',
+        'Tests are readable and assert the right things',
+        'No tests are skipped or commented out without reason',
+        'Test coverage meets team threshold',
+      ]
+    },
+    {
+      title: 'Code Quality', icon: '✨', color: '#d69e2e',
+      items: [
+        'Code is readable and self-documenting',
+        'Functions and variables have clear, descriptive names',
+        'No dead code, commented-out blocks, or debug prints',
+        'DRY principle followed — no unnecessary duplication',
+        'Complexity is justified or refactored to simpler solution',
+      ]
+    },
+    {
+      title: 'Architecture', icon: '🏛', color: '#805ad5',
+      items: [
+        'Change is consistent with existing patterns and conventions',
+        'New abstractions are justified and not over-engineered',
+        'Separation of concerns is maintained',
+        'No circular dependencies introduced',
+        'API contracts / interfaces are backward compatible (or versioned)',
+      ]
+    },
+    {
+      title: 'Performance', icon: '⚡', color: '#dd6b20',
+      items: [
+        'No N+1 database query patterns',
+        'Heavy operations are async or moved off the critical path',
+        'Data structures chosen appropriately for access patterns',
+        'No unnecessary re-renders or recomputations (frontend)',
+        'Caching used where appropriate and cache invalidation correct',
+      ]
+    },
+    {
+      title: 'Documentation', icon: '📝', color: '#319795',
+      items: [
+        'Public APIs / functions have JSDoc / docstring comments',
+        'Complex logic is explained with inline comments',
+        'README updated if setup steps or config changed',
+        'CHANGELOG updated if required by team policy',
+      ]
+    },
+    {
+      title: 'PR Hygiene', icon: '🧹', color: '#e53e3e',
+      items: [
+        'PR title is concise and describes the change',
+        'PR description explains what, why, and how to test',
+        'PR is reasonably sized (< ~400 lines diff)',
+        'Commits are clean and messages are meaningful',
+        'All CI checks pass',
+      ]
+    },
+  ];
+
+  function buildChecklist() {
+    const grid = document.getElementById('checklist-grid');
+    let totalCount = 0;
+
+    categories.forEach((cat, ci) => {
+      const card = document.createElement('div');
+      card.className = 'check-card';
+
+      const header = document.createElement('div');
+      header.className = 'check-card-header';
+      header.style.borderLeft = `4px solid ${cat.color}`;
+      header.innerHTML = `<span class="icon">${cat.icon}</span><span>${cat.title}</span>`;
+      card.appendChild(header);
+
+      const list = document.createElement('div');
+      list.className = 'check-list';
+
+      cat.items.forEach((item, ii) => {
+        const id = `chk-${ci}-${ii}`;
+        totalCount++;
+
+        const row = document.createElement('div');
+        row.className = 'check-item';
+        row.innerHTML = `
+          <input type="checkbox" id="${id}" onchange="updateProgress()">
+          <label for="${id}">${item}</label>
+        `;
+        row.addEventListener('click', () => {});
+        list.appendChild(row);
+      });
+
+      card.appendChild(list);
+
+      const prog = document.createElement('div');
+      prog.className = 'progress-bar-wrap';
+      prog.id = `prog-${ci}`;
+      prog.innerHTML = `<span id="prog-label-${ci}">0 / ${cat.items.length}</span><div class="progress-bar-track"><div class="progress-bar-fill" id="prog-fill-${ci}" style="width:0%"></div></div>`;
+      card.appendChild(prog);
+
+      grid.appendChild(card);
+    });
+
+    document.getElementById('total-count').textContent = totalCount;
+  }
+
+  function updateProgress() {
+    let totalChecked = 0;
+    const total = parseInt(document.getElementById('total-count').textContent);
+
+    categories.forEach((cat, ci) => {
+      let catChecked = 0;
+      cat.items.forEach((_, ii) => {
+        const cb = document.getElementById(`chk-${ci}-${ii}`);
+        if (cb && cb.checked) {
+          catChecked++;
+          totalChecked++;
+          cb.closest('.check-item').classList.add('checked');
+        } else if (cb) {
+          cb.closest('.check-item').classList.remove('checked');
+        }
+      });
+      const pct = cat.items.length ? (catChecked / cat.items.length * 100).toFixed(0) : 0;
+      const fill = document.getElementById(`prog-fill-${ci}`);
+      const label = document.getElementById(`prog-label-${ci}`);
+      if (fill) fill.style.width = pct + '%';
+      if (label) label.textContent = `${catChecked} / ${cat.items.length}`;
+    });
+
+    document.getElementById('checked-count').textContent = totalChecked;
+    document.getElementById('pct-count').textContent = total ? Math.round(totalChecked / total * 100) + '%' : '0%';
+  }
+
+  function clearAll() {
+    document.querySelectorAll('.check-item input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.check-item').forEach(el => el.classList.remove('checked'));
+    updateProgress();
+  }
+
+  buildChecklist();
+  updateProgress();
+</script>
+</body>
+</html>

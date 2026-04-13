@@ -21,6 +21,18 @@ void cii(void);
 
 // Words
 NAMES(wordnames)
+	NAME("show-ADC")		//  show all adc inputs
+	NAME("setpwm")		//  ( n ) set muscle wire PWM duty to n percent (0-70)
+	NAME("show-pwm")		//  show PWM duty, supply/node voltages, wire resistance and contraction
+	NAME("start-profile")		//  ( n ) apply n% PWM and begin 25.6 s resistance profile capture
+	NAME("dump-profile")		//  emit captured profile as CSV to CLI output
+	NAME("cal-wire")		//  run two-point self-calibration: R_max at 0% then R_min at 70%
+	NAME("show-cal")		//  show calibration state, R_max, R_min and measured travel span
+	NAME("set-per")		//   ( n ) set closed-loop contraction target to n percent (0-100) and enable controller
+	NAME("show-cl")		//   show closed-loop controller state: target, measured, error, rate, PWM
+	NAME("cl-off")		//   disable closed-loop controller; PWM holds at last value
+	NAME("char-wire")		//   ( n ) run 3-phase step-response test: pre-cool, heat at n%, cool to rest
+	NAME("dump-char")		//   emit char-wire step-response data as CSV (paste into spreadsheet)
 	NAME("show-sys")		//  show system info: clock frequencies and uptime
 	NAME("show-time")		//  show delta timer state and UTC tick counter
 	NAME("show-timers")		//  dump TIM1-TIM14 and RTC: clock gate, CEN, direction, PSC, ARR, CNT, active CC channels
@@ -153,6 +165,18 @@ NAMES(wordnames)
 	NAME("nap")		//  (n) take a nap for n milliseconds
 END_NAMES
 
+void show_adc(void);
+void MW_CLI_SetPWM(void);
+void MW_CLI_ShowPWM(void);
+void MW_CLI_StartProfile(void);
+void MW_DumpProfile(void);
+void MW_CLI_Calibrate(void);
+void MW_CLI_ShowCal(void);
+void MW_CLI_SetPercent(void);
+void MW_CLI_ShowCL(void);
+void MW_CLI_CLOff(void);
+void MW_CLI_CharWire(void);
+void MW_CLI_DumpChar(void);
 void show_sys(void);
 void show_timer(void);
 void show_timers(void);
@@ -285,6 +309,18 @@ void autoEchoOff(void);
 void nap_for(void);
 
 BODIES(wordbodies)
+	BODY(show_adc)
+	BODY(MW_CLI_SetPWM)
+	BODY(MW_CLI_ShowPWM)
+	BODY(MW_CLI_StartProfile)
+	BODY(MW_DumpProfile)
+	BODY(MW_CLI_Calibrate)
+	BODY(MW_CLI_ShowCal)
+	BODY(MW_CLI_SetPercent)
+	BODY(MW_CLI_ShowCL)
+	BODY(MW_CLI_CLOff)
+	BODY(MW_CLI_CharWire)
+	BODY(MW_CLI_DumpChar)
 	BODY(show_sys)
 	BODY(show_timer)
 	BODY(show_timers)

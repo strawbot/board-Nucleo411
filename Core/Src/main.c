@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "rtc.h"
 #include "tim.h"
 #include "usart.h"
@@ -32,6 +33,10 @@
 void init_tea();
 void init_cli();
 void run();
+
+void ADC_Driver_Init();   // once, after clocks are up
+void MW_Init(void);
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -99,10 +104,14 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM10_Init();
   MX_USART2_UART_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   init_tea();
   init_cli();
   usart2_transport_init();
+  ADC_Driver_Init();
+  later(MW_Init);
 
   /* USER CODE END 2 */
 
