@@ -44,7 +44,8 @@ static Long timestamp_to_utc(const char *ts) {
 // Write a UTC Unix timestamp into the STM32F4 RTC peripheral (LL driver).
 void set_utc(Long utc) {
     time_t t_val = (time_t)utc;
-    struct tm *t = gmtime(&t_val);
+    struct tm tm_buf;                       /* caller-owned: no malloc       */
+    struct tm *t = gmtime_r(&t_val, &tm_buf);
 
     // tm_wday: 0=Sun..6=Sat  →  RTC: 1=Mon..7=Sun
     uint8_t wday = (t->tm_wday == 0) ? 7U : (uint8_t)t->tm_wday;

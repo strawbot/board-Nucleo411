@@ -29,6 +29,7 @@
 
 #include "cli_transport_usart2.h"
 #include "tea.h"
+#include "nucleo_cli.h"
 
 void init_tea();
 void init_cli();
@@ -88,6 +89,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  stack_canary_init();   /* fill stack with 0xDEADBEEF before any deep calls */
 
   /* USER CODE END Init */
 

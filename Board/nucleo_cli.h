@@ -19,8 +19,9 @@ void show_usb(void);        // USB connection state and CDC line status
 void show_acc(void);        // Chip type, WHO_AM_I, pitch, roll, sample and tap counts
 
 // system
-void show_sys(void);        // Clock frequencies and uptime
-void show_timers(void);     // STM32F407 hardware timer survey: TIM1-TIM14 + RTC (clock gate, CEN, PSC/ARR/CNT, active CC channels)
-void do_reboot(void);       // NVIC system reset
+void stack_canary_init(void); // Fill stack with 0xDEADBEEF — call as early as possible in main()
+void show_sys(void);          // Clock frequencies, uptime, stack high-water mark
+void show_timers(void);       // STM32F407 hardware timer survey: TIM1-TIM14 + RTC (clock gate, CEN, PSC/ARR/CNT, active CC channels)
+void do_reboot(void);         // NVIC system reset
 
 #endif // DISCOVERY_CLI_H
