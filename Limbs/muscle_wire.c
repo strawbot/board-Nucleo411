@@ -198,30 +198,6 @@ bool MW_IsOnPhase(void)
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// TIM3 IRQ — no-op stub retained for link compatibility with stm32f4xx_it.c
-//
-// At 100 kHz the CC4 one-shot path is not used: the 100 nF cap on R_SENSE
-// holds V_ON between pulses so MW_SampleR calls ADC_SimBurstRead directly.
-// The TIM3 NVIC is not enabled, so this handler is never actually entered.
-// When CC4 fires the ISR would trigger an ADC read; on F411 that becomes
-// sequential: vsup (IN0/PA0) then vsense (IN1/PA1) on ADC1.
-//
-// Measuring during ON phase: current flows through the inline sense resistor,
-// so vsense = I × R_SENSE gives a direct measure of wire current.
-// Supply-rail noise cancels in the R_wire ratio.
-// ADC conversion: ~714 ns (15 cycles @ 21 MHz); spin-wait is bounded.
-//
-// Call from TIM3_IRQHandler in stm32f4xx_it.c:
-//   void TIM3_IRQHandler(void) { MW_TIM3_IRQHandler(); }
-// ═════════════════════════════════════════════════════════════════════════════
-
-void MW_TIM3_IRQHandler(void)
-{
-    // No-op — TIM3 NVIC not enabled at 100 kHz.
-    // Retained so stm32f4xx_it.c compiles without modification.
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 // ADC readings  (from shared adc_driver DMA buffer)
 // ═════════════════════════════════════════════════════════════════════════════
 
