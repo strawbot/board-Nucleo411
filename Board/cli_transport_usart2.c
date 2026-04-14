@@ -112,11 +112,12 @@ void usart2_transport_init(void) {
 
 // irq handler
 void usart2_irq() {
-    if (LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
+    Long status = USART2->SR;
+    if ((status & USART_SR_RXNE) && LL_USART_IsEnabledIT_RXNE(USART2))
         usart2_rx_irq();
-    if (LL_USART_IsActiveFlag_TXE(USART2)  && LL_USART_IsEnabledIT_TXE(USART2))
+    if ((status & USART_SR_TXE) && LL_USART_IsEnabledIT_TXE(USART2))
         usart2_tx_irq();
-    if (LL_USART_IsActiveFlag_TC(USART2)   && LL_USART_IsEnabledIT_TC(USART2))
+    if ((status & USART_SR_TC)  && LL_USART_IsEnabledIT_TC(USART2))
         usart2_tc_irq();
 }
 
