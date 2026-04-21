@@ -13,19 +13,21 @@
 // byte per TXE interrupt.  When the queue empties, TXE is disabled and the TC
 // interrupt is armed to detect when the last byte has fully shifted out.
 //
-// RX uses the RXNE interrupt.  The single-instance state machine
-// (IDLE → QUEUED → RUNNING → REQUEUE) prevents queue overflow if bytes
-// arrive faster than the action runs.
+// RX uses DMA1 Stream5 (circular mode, direct/no-FIFO) into a 256-byte ring
+// buffer.  The DMA HT and TC interrupts fire at the half-way and wrap points,
+// draining any new bytes into cliq and scheduling usart2_rx_action() if the
+// queue was empty.  This guarantees no character is lost regardless of how
+// long the cooperative action loop takes to return.
 //
-// Required wiring in stm32f4xx_it.c USART2_IRQHandler:
-//   usart2_rx_irq() — when RXNE flag set and RXNE interrupt enabled
-//   usart2_tx_irq() — when TXE  flag set and TXE  interrupt enabled
-//   usart2_tc_irq() — when TC   flag set and TC   interrupt enabled
+// Required wiring in stm32f4xx_it.c:
+//   DMA1_Stream5_IRQHandler → usart2_dma_irq()
+//   USART2_IRQHandler       → usart2_irq()  (TX only: TXE + TC flags)
 
 #include <stdint.h>
 #include <stdbool.h>
 
 #include "stm32f4xx_ll_usart.h"
+#include "stm32f4xx_ll_dma.h"
 
 #include "tea.h"
 #include "cli.h"
@@ -34,9 +36,76 @@
 
 #include "cli_transport_usart2.h"
 
-// ── Forward declaration ───────────────────────────────────────────────────────
+// ── Forward declarations ──────────────────────────────────────────────────────
 
 static void usart2_rx_action(void);
+
+// ── CLI input queue — filled by DMA drain, consumed by usart2_rx_action ──────
+static BQUEUE(100, cliq);
+
+// ── DMA RX ring buffer ────────────────────────────────────────────────────────
+//
+// DMA1 Stream5 runs in circular mode: it fills dma_rx_buf[] continuously,
+// wrapping at USART2_DMA_RX_SIZE.  dma_rx_head tracks the last byte we
+// consumed so the drain function can copy only the new arrivals.
+//
+// Direct mode (FIFO disabled) is used so every byte from USART2->DR is
+// written to memory immediately without waiting for a FIFO threshold.
+
+#define USART2_DMA_RX_SIZE  256u
+
+static uint8_t  dma_rx_buf[USART2_DMA_RX_SIZE];
+static uint32_t dma_rx_head = 0;   // consumer index into dma_rx_buf[]
+
+// Current DMA write position: where the DMA will write the *next* byte.
+// NDTR counts down from USART2_DMA_RX_SIZE to 1, then reloads.
+static inline uint32_t dma_rx_write_pos(void) {
+    return USART2_DMA_RX_SIZE - LL_DMA_GetDataLength(DMA1, LL_DMA_STREAM_5);
+}
+
+// Copy any bytes that have arrived since the last drain into cliq and,
+// if the queue was empty before, schedule usart2_rx_action().
+static void usart2_dma_drain(void) {
+    uint32_t wpos = dma_rx_write_pos();
+    uint32_t head = dma_rx_head;
+
+    if (head == wpos) return;   // nothing new
+
+    bool was_empty = (qbq(cliq) == 0);
+
+    if (wpos > head) {
+        // Contiguous region — no wrap
+        for (uint32_t i = head; i < wpos; i++)
+            pushbq(dma_rx_buf[i], cliq);
+    } else {
+        // DMA has wrapped: tail of buffer, then start of buffer
+        for (uint32_t i = head; i < USART2_DMA_RX_SIZE; i++)
+            pushbq(dma_rx_buf[i], cliq);
+        for (uint32_t i = 0; i < wpos; i++)
+            pushbq(dma_rx_buf[i], cliq);
+    }
+
+    dma_rx_head = wpos;
+
+    if (was_empty && qbq(cliq))
+        later(usart2_rx_action);
+}
+
+// ── usart2_dma_irq — call from DMA1_Stream5_IRQHandler ───────────────────────
+//
+// Fires on HT (half-transfer, 128 bytes written) and TC (transfer complete,
+// 256 bytes written / wrap to 0).  Both events just drain whatever arrived.
+
+void usart2_dma_irq(void) {
+    if (LL_DMA_IsActiveFlag_HT5(DMA1)) {
+        LL_DMA_ClearFlag_HT5(DMA1);
+        usart2_dma_drain();
+    }
+    if (LL_DMA_IsActiveFlag_TC5(DMA1)) {
+        LL_DMA_ClearFlag_TC5(DMA1);
+        usart2_dma_drain();
+    }
+}
 
 // ── EmitEvent target — kicks off interrupt-driven TX ─────────────────────────
 //
@@ -75,15 +144,6 @@ void usart2_tc_irq(void) {
     LL_USART_ClearFlag_TC(USART2);
 }
 
-// ── usart2_rx_irq — call from USART2_IRQHandler ───────────────────────────────
-static BQUEUE(100, cliq);
-
-void usart2_rx_irq(void) {
-    pushbq(LL_USART_ReceiveData8(USART2), cliq);
-    if (qbq(cliq) == 1)
-        later(usart2_rx_action);
-}
-
 // ── usart2_rx_action — tea.c action, single-instance ─────────────────────────
 
 static void usart2_rx_action(void) {
@@ -99,25 +159,58 @@ static void usart2_rx_action(void) {
 }
 
 // ── usart2_transport_init — call once from board init ────────────────────────
+//
+// Completes the DMA setup that CubeMX leaves to runtime (memory address,
+// transfer count, interrupts) and starts the circular receive.
+// Must be called after MX_DMA_Init() and MX_USART2_UART_Init().
 
 void usart2_transport_init(void) {
-    // Enable USART2 RXNE interrupt — USART2 peripheral itself is already
-    // initialised by MX_USART2_UART_Init() generated by CubeMX.
-    LL_USART_EnableIT_RXNE(USART2);
+    // CubeMX enables FIFO mode (threshold = 4 bytes) which would buffer
+    // single keystrokes indefinitely.  Switch to direct mode so every byte
+    // arriving at USART2->DR is immediately written to dma_rx_buf[].
+    LL_DMA_DisableFifoMode(DMA1, LL_DMA_STREAM_5);
+
+    // Point the DMA at our ring buffer.
+    LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_5, (uint32_t)&USART2->DR);
+    LL_DMA_SetMemoryAddress(DMA1, LL_DMA_STREAM_5, (uint32_t)dma_rx_buf);
+    LL_DMA_SetDataLength   (DMA1, LL_DMA_STREAM_5, USART2_DMA_RX_SIZE);
+
+    // Fire at half-full (128 bytes) and full/wrap (256 bytes) so we drain
+    // promptly without needing to poll.
+    LL_DMA_EnableIT_HT(DMA1, LL_DMA_STREAM_5);
+    LL_DMA_EnableIT_TC(DMA1, LL_DMA_STREAM_5);
+
+    // Start the DMA stream and connect it to the USART.
+    LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_5);
+    LL_USART_EnableDMAReq_RX(USART2);
+
+    // Enable IDLE interrupt so a single byte (or short burst) gets drained
+    // promptly — without this, bytes sit unprocessed until 128 accumulate.
+    LL_USART_ClearFlag_IDLE(USART2);
+    LL_USART_EnableIT_IDLE(USART2);
 
     // Establish USART2 as the default CLI transport from boot.
     when(EmitEvent, usart2_emit);
     autoEchoOff();
 }
 
-// irq handler
-void usart2_irq() {
+// ── usart2_irq — TX-only handler; call from USART2_IRQHandler ────────────────
+//
+// RX is now handled by DMA, so only TXE and TC flags matter here.
+
+static Long pstatus = 0;
+
+void usart2_irq(void) {
     Long status = USART2->SR;
-    if ((status & USART_SR_RXNE) && LL_USART_IsEnabledIT_RXNE(USART2))
-        usart2_rx_irq();
+    if ((status & USART_SR_IDLE) && LL_USART_IsEnabledIT_IDLE(USART2)) {
+        LL_USART_ClearFlag_IDLE(USART2);   // cleared by SR read + DR read
+        (void)USART2->DR;                  // complete the clear sequence
+        usart2_dma_drain();
+    }
     if ((status & USART_SR_TXE) && LL_USART_IsEnabledIT_TXE(USART2))
         usart2_tx_irq();
     if ((status & USART_SR_TC)  && LL_USART_IsEnabledIT_TC(USART2))
         usart2_tc_irq();
+    pstatus |= status;
 }
 
