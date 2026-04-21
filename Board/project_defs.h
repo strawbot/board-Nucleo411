@@ -10,7 +10,7 @@
 // bigger buffer for accepting long hexscii sequences
 #define CLI_PARAMETERS
 
-#define CLI_TITLE "ActiveRobot 411"
+#define CLI_TITLE "ActiveRobot 411\n"
 
 #define DCELLS 20  // number of data stack cells
 #define RCELLS 20  // number of return stack cells

@@ -62,6 +62,59 @@ static volatile struct {
 static float iir_vsup_mv   = 0.0f;
 static float iir_vsense_mv = 0.0f;
 
+// ── Trimmed-mean ADC helpers ──────────────────────────────────────────────────
+
+/* Insertion sort for small uint16_t arrays. */
+static void sort_u16(uint16_t *arr, uint8_t n)
+{
+    for (uint8_t i = 1u; i < n; i++)
+    {
+        uint16_t key = arr[i];
+        int8_t   j   = (int8_t)i - 1;
+        while (j >= 0 && arr[(uint8_t)j] > key)
+        {
+            arr[(uint8_t)(j + 1)] = arr[(uint8_t)j];
+            j--;
+        }
+        arr[(uint8_t)(j + 1)] = key;
+    }
+}
+
+/*
+ * Collect MW_ADC_SAMPLES sequential pairs on ADC1 (IN0 then IN1), sort each
+ * channel independently, and return the average of the middle
+ * (MW_ADC_SAMPLES − 2×MW_ADC_TRIM) values — discarding the lowest and
+ * highest MW_ADC_TRIM readings to reject switching transients.
+ *
+ * Blocking time: MW_ADC_SAMPLES × ~3.86 µs ≈ 38.6 µs at 21 MHz ADC clock.
+ */
+static void trimmed_burst_read(uint16_t *out0, uint16_t *out1)
+{
+    uint16_t buf0[MW_ADC_SAMPLES];
+    uint16_t buf1[MW_ADC_SAMPLES];
+
+    for (uint8_t i = 0u; i < MW_ADC_SAMPLES; i++)
+    {
+        ADC_SimTrigger();
+        while (!ADC_SimReady()) {}
+        ADC_SimRead(&buf0[i], &buf1[i]);
+    }
+
+    sort_u16(buf0, MW_ADC_SAMPLES);
+    sort_u16(buf1, MW_ADC_SAMPLES);
+
+    uint32_t sum0 = 0u, sum1 = 0u;
+    for (uint8_t i = MW_ADC_TRIM; i < MW_ADC_SAMPLES - MW_ADC_TRIM; i++)
+    {
+        sum0 += buf0[i];
+        sum1 += buf1[i];
+    }
+
+    const uint8_t keep = MW_ADC_SAMPLES - 2u * MW_ADC_TRIM;
+    *out0 = (uint16_t)(sum0 / (uint32_t)keep);
+    *out1 = (uint16_t)(sum1 / (uint32_t)keep);
+}
+
 // ── Closed-loop controller state ──────────────────────────────────────────────
 static float cl_target_pct = -1.0f;    // < 0 = disabled
 static float cl_prev_pct   =  0.0f;    // previous contraction reading for rate term
@@ -240,9 +293,9 @@ void MW_SampleR(void)
         // Counter runs 0→839 (10 µs) so SETTLE_TICKS=38 is well within range.
         while (LL_TIM_GetCounter(TIM3) < MW_ADC_SETTLE_TICKS) {}
 
-        // Burst-sample (≈ 7.7 µs).  FET stays ON during the entire burst
-        // because CCR2 = ARR keeps duty at 99.9 % through each wrap.
-        ADC_SimBurstRead(&raw0, &raw1, MW_ADC_SAMPLES);
+        // Trimmed-mean sample (≈ 38.6 µs).  FET stays ON during the entire
+        // burst because CCR2 = ARR keeps duty at 99.9 % through each wrap.
+        trimmed_burst_read(&raw0, &raw1);
 
         // Restore 0 % — FET off.
         LL_TIM_OC_SetCompareCH2(TIM3, 0u);
@@ -252,7 +305,7 @@ void MW_SampleR(void)
     {
         // ── Cap holds V_ON — sample at any time ─────────────────────────────
         // No timer sync needed.  V_sense on IN1 ≈ V_ON (within 0.01 % droop).
-        ADC_SimBurstRead(&raw0, &raw1, MW_ADC_SAMPLES);
+        trimmed_burst_read(&raw0, &raw1);
     }
 
     // Store raw counts — read by profile capture; replaces removed adc_raw_latch.

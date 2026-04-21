@@ -79,7 +79,7 @@ typedef struct
     /**
      * Calibrated voltages in millivolts.
      *   [IN0]      – PA0 pin voltage 0–VDDA  (supply sense divider output)
-     *   [IN1]      – PA1 pin voltage 0–VDDA  (sense resistor node)
+     *   [IN1]      – PA1 pin voltage 0–VDDA  (diff-amp output; = DIFF_GAIN × V_sense)
      *   [TEMP]     – NOT a voltage; see temperature_c below
      *   [VREFINT]  – internal reference (~1210 mV, useful sanity check)
      *   [VBAT]     – actual VBAT in mV (÷2 bridge divider already removed)

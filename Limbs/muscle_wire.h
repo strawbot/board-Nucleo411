@@ -85,7 +85,7 @@
 // MW_R_SENSE must match the actual sense resistor (1 Ω inline with FET source).
 #define MW_R_SENSE              1.0f        // Ω — inline sense resistor (FET source)
 #define MW_SCALE_CH0            6.00f       // (R1+R2)/R2 for supply divider
-#define MW_SCALE_CH1            1.0f        // direct connection — no divider on sense node
+#define MW_SCALE_CH1            0.2f        // diff-amp gain = 5 — divide out to recover V_sense
 
 // Wire physical constants (8-inch Flexinol, Teflon-sleeved)
 #define MW_R_WIRE_RELAXED       8.9f       // Ω  cold, no load
@@ -108,23 +108,29 @@
 
 // ── ADC sample timing ─────────────────────────────────────────────────────────
 // At 100 kHz the ON phase is ≤ 3.5 µs at normal PWM settings.
-// The ADC burst (4 pairs × 1.93 µs = 7.72 µs) cannot fit inside a single
-// ON phase, so the CC4 one-shot approach used at 1 kHz is abandoned.
+// The ADC burst cannot fit inside a single ON phase, so the CC4 one-shot
+// approach used at 1 kHz is abandoned.
 //
 // Instead the 100 nF cap across R_SENSE holds V_ON between pulses (τ_hold ≈ 100 ms).
-// MW_SampleR calls ADC_SimBurstRead directly — no timer synchronisation needed.
+// MW_SampleR collects MW_ADC_SAMPLES pairs directly — no timer synchronisation needed.
 //
 // For pwm_pct = 0: MW_SampleR briefly forces 99.9 % duty (CCR2 = MW_PWM_ARR)
 //   via GenerateEvent_UPDATE, waits MW_ADC_SETTLE_TICKS timer counts for the cap
 //   to charge, runs the burst, then restores CCR2 = 0.
 //
-// MW_ADC_SETTLE_TICKS is now in 84 MHz timer ticks (≈ 11.9 ns each):
+// MW_ADC_SETTLE_TICKS is in 84 MHz timer ticks (≈ 11.9 ns each):
 //   5 × τ_charge = 5 × 90 ns ≈ 450 ns → 38 ticks
 //
 // MW_TIM3_IRQHandler is retained as a no-op stub so stm32f4xx_it.c compiles
 // without changes.  The NVIC for TIM3 is no longer enabled.
+//
+// Trimmed-mean filtering: MW_ADC_SAMPLES raw pairs are collected, sorted, and
+// the middle (MW_ADC_SAMPLES − 2×MW_ADC_TRIM) values averaged.  Outliers from
+// PWM switching transients or cap droop are discarded before the IIR stage.
+//   10 pairs × ~3.86 µs ≈ 38.6 µs total blocking time per sample.
 #define MW_ADC_SETTLE_TICKS     38u     // timer ticks (84 MHz) to charge cap before sample
-#define MW_ADC_SAMPLES          4u      // simultaneous pairs per reading (√4 = 2× noise)
+#define MW_ADC_SAMPLES          15u     // raw pairs collected per trimmed-mean reading
+#define MW_ADC_TRIM             4u      // pairs discarded from each tail (keep middle lot)
 
 // ── Self-calibration ──────────────────────────────────────────────────────────
 // cal-wire procedure: hold 0% until stable (R_max), then max% until stable (R_min).
