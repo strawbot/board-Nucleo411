@@ -165,6 +165,21 @@ static void usart2_rx_action(void) {
 // Must be called after MX_DMA_Init() and MX_USART2_UART_Init().
 
 void usart2_transport_init(void) {
+    // STM32F4 DMA: all SxCR/NDTR/PAR/M0AR registers are write-protected while
+    // EN=1.  A soft/debug reset can leave the stream enabled from the previous
+    // run, so every write below would be silently ignored.  Disable first and
+    // spin until the hardware clears EN (takes ≤ a few AHB cycles).
+    LL_DMA_DisableStream(DMA1, LL_DMA_STREAM_5);
+    while (LL_DMA_IsEnabledStream(DMA1, LL_DMA_STREAM_5)) {}
+
+    // Clear any stale flags left over from the previous run.  Flag bits must
+    // be cleared via the IFCR registers; they are not self-clearing on disable.
+    LL_DMA_ClearFlag_HT5(DMA1);
+    LL_DMA_ClearFlag_TC5(DMA1);
+    LL_DMA_ClearFlag_TE5(DMA1);
+    LL_DMA_ClearFlag_DME5(DMA1);
+    LL_DMA_ClearFlag_FE5(DMA1);
+
     // CubeMX enables FIFO mode (threshold = 4 bytes) which would buffer
     // single keystrokes indefinitely.  Switch to direct mode so every byte
     // arriving at USART2->DR is immediately written to dma_rx_buf[].
@@ -203,8 +218,7 @@ static Long pstatus = 0;
 void usart2_irq(void) {
     Long status = USART2->SR;
     if ((status & USART_SR_IDLE) && LL_USART_IsEnabledIT_IDLE(USART2)) {
-        LL_USART_ClearFlag_IDLE(USART2);   // cleared by SR read + DR read
-        (void)USART2->DR;                  // complete the clear sequence
+        (void)USART2->DR;   // SR already read above (step 1); DR read = step 2 clears IDLE
         usart2_dma_drain();
     }
     if ((status & USART_SR_TXE) && LL_USART_IsEnabledIT_TXE(USART2))

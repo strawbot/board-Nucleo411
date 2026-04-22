@@ -1,4 +1,4 @@
-// discovery_cli.c — CLI command implementations for the Discovery board.
+// nucleo_cli.c — CLI command implementations for the Nucleo411 board.
 // All functions are void(void) — output via print() / printers.h to emitq.
 
 #include <stdbool.h>
@@ -9,57 +9,11 @@
 #include "stm32f4xx_ll_rcc.h"
 #include "nucleo_cli.h"
 
-/* ── Stack overflow detection ────────────────────────────────────────────────
- *
- * The linker exports _sstack (bottom of stack region) and _estack (top /
- * initial SP).  On Cortex-M the stack grows downward, so _sstack is where
- * overflow hits first.
- *
- * stack_canary_init() fills the entire unused portion of the stack with
- * 0xDEADBEEF as early as possible in main().  After that:
- *   - stack_bottom_intact()   → returns 0 if SP ever went below _sstack
- *   - stack_high_water_bytes()→ scans from _sstack upward for the first
- *                               non-canary word; difference from _estack
- *                               gives max bytes ever used (high-water mark)
- */
-#define CANARY_WORD  0xDEADBEEFu
-
-extern uint32_t _estack;   /* linker: top of stack (initial SP) */
-extern uint32_t _Min_Stack_Size; // hopefully the stack size declared
-extern uint32_t _ebss; // start of heap/bottom of free memory
-
-#define _sstack _ebss  /* linker: bottom of stack region */
-
-void stack_canary_init(void)
-{
-    uint32_t sp;
-    __asm volatile ("mov %0, sp" : "=r" (sp));
-
-    volatile uint32_t *p     = (volatile uint32_t *)&_sstack;
-    volatile uint32_t *limit = (volatile uint32_t *)(sp - 64u); /* safety margin */
-
-    while (p < limit) *p++ = CANARY_WORD;
-}
-
-/* Scan from _sstack upward; return max bytes ever used by the stack. */
-static uint32_t stack_high_water_bytes(void)
-{
-    volatile uint32_t *p   = (volatile uint32_t *)&_sstack;
-    volatile uint32_t *top = (volatile uint32_t *)&_estack;
-    while (p < top && *p == CANARY_WORD) p++;
-    return (uint32_t)((uintptr_t)top - (uintptr_t)p);
-}
-
-/* Returns 0 if any of the lowest 4 canary words have been overwritten. */
-static int stack_bottom_intact(void)
-{
-    volatile uint32_t *p = (volatile uint32_t *)&_sstack;
-    for (int i = 0; i < 4; i++) {
-        print(".");
-        if (p[i] != CANARY_WORD) return 0;
-    }
-    return 1;
-}
+// Stack overflow detection is provided by Robot/diagnostics/canary.
+// The older 2-state implementation that lived here previously has been
+// replaced by the canonical 4-state version (OK/WARN/OVERFLOW/CRITICAL).
+// See Robot/README.md for the linker-symbol contract.
+#include "canary.h"
 
 void show_sys(void) {
     LL_RCC_ClocksTypeDef clocks;
@@ -72,24 +26,8 @@ void show_sys(void) {
     show_timer();
     printCr();
 
-    /* _Min_Stack_Size: linker symbol whose *address* is the configured budget.
-     * hwm is shown against this limit so the fraction is meaningful.
-     * The canary at _sstack (end of BSS) catches overflow into data/BSS
-     * regardless of the budget — both conditions are reported separately.  */
-    uint32_t limit = (uint32_t)&_Min_Stack_Size;
-    uint32_t hwm   = stack_high_water_bytes();
     print("stack:   ");
-    if (!stack_bottom_intact()) {
-        print("*** OVERFLOW into BSS ***  hwm="); printDec(hwm);
-        print("/"); printDec(limit); print(" B");
-        pdump((Byte *)&_sstack, 10);
-    } else if (hwm > limit) {
-        print("WARNING hwm="); printDec(hwm);
-        print("/"); printDec(limit); print(" B  exceeds _Min_Stack_Size");
-    } else {
-        print("OK  hwm="); printDec(hwm);
-        print("/"); printDec(limit); print(" B");
-    }
+    stack_render(stack_check());
     printCr();
 }
 
