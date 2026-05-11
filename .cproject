@@ -87,8 +87,8 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Limbs"/>
-						<entry excluding="net" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Robot"/>
-						<entry excluding="valueTransfer.c|timestamp.c|printersHost.c|hash_32.c|TimbreUnitTests" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TimbreOS"/>
+						<entry excluding="diagnostics/show_net|diagnostics/show_ip|diagnostics/show_http|net" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Robot"/>
+						<entry excluding="WordLists|valueTransfer.c|timestamp.c|printersHost.c|hash_32.c|TimbreUnitTests" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TimbreOS"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -176,8 +176,8 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Limbs"/>
-						<entry excluding="net" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Robot"/>
-						<entry excluding="valueTransfer.c|timestamp.c|printersHost.c|hash_32.c|TimbreUnitTests" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TimbreOS"/>
+						<entry excluding="diagnostics/show_net|diagnostics/show_ip|diagnostics/show_http|net" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Robot"/>
+						<entry excluding="WordLists|valueTransfer.c|timestamp.c|printersHost.c|hash_32.c|TimbreUnitTests" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TimbreOS"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
