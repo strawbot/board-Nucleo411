@@ -114,6 +114,7 @@ int main(void)
   init_tea();
   init_cli();
   usart2_transport_init();
+  print_build_banner();
   ADC_Driver_Init();
   later(MW_Init);
 

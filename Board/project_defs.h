@@ -6,6 +6,7 @@
 #include "stm32f4xx.h"
 #include "cmsis_gcc.h"
 #include "core_cm4.h"
+#include "main.h"
 
 // bigger buffer for accepting long hexscii sequences
 #define CLI_PARAMETERS
@@ -42,6 +43,22 @@ void output();
 #define ONE_SECOND (10000)	// for UTC 100us res
 #define TE_SECOND ONE_SECOND    // for Delta timer
 #define get_utc() 0  // utc in seconds
+
+// ── Clocks hardware wiring (consumed by TimbreOS/clocks.c) ────────────────
+// STM32F411: TIM10 = 16-bit one-shot delta alarm; TIM2 = 32-bit free-running tick.
+#include "stm32f4xx_ll_tim.h"
+#include "stm32f4xx_ll_gpio.h"
+#define CLOCK_DELTA_TIM   TIM10
+#define CLOCK_TICK_TIM    TIM2
+#define CLOCK_LED_ON()    LL_GPIO_SetOutputPin(LD2_GPIO_Port, LD2_Pin)
+#define CLOCK_LED_OFF()   LL_GPIO_ResetOutputPin(LD2_GPIO_Port, LD2_Pin)
+#define CLOCK_HW_INIT() do { \
+    LL_TIM_SetOnePulseMode(TIM10, LL_TIM_ONEPULSEMODE_SINGLE); \
+    LL_TIM_EnableIT_UPDATE(TIM10); \
+    LL_TIM_EnableCounter(TIM2); \
+} while (0)
+void set_utc(Long utc);
+#define CLOCK_INIT_UTC()  set_utc(timestamp_to_utc(__TIMESTAMP__))
 
 // Hi res time measurements
 // 84 MHz clock ticks; wraps after 50 seconds; 11.9 ns resolution
